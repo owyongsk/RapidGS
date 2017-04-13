@@ -11,7 +11,7 @@ function doGet(request){
   var cache   = CacheService.getDocumentCache();
   var doGetJs = cache.get("doGet");
   if (doGetJs == null) {
-    doGetJs = UrlFetchApp.fetch('https://raw.githubusercontent.com/owyongsk/RapidGS/master/doGet.js').getContentText();
+    doGetJs = UrlFetchApp.fetch('https://github.com/owyongsk/RapidGS/raw/master/doGet.js').getContentText();
     cache.put("doGet", doGetJs, 21600);
   }
   eval(doGetJs);
@@ -22,7 +22,7 @@ function doPost(request){
   var cache    = CacheService.getDocumentCache();
   var doPostJs = cache.get("doPost");
   if (doPostJs == null) {
-    doPostJs = UrlFetchApp.fetch('https://raw.githubusercontent.com/owyongsk/RapidGS/master/doPost.js').getContentText();
+    doPostJs = UrlFetchApp.fetch('https://github.com/owyongsk/RapidGS/raw/master/doPost.js').getContentText();
     cache.put("doPost", doPostJs, 21600);
   }
   eval(doPostJs);
