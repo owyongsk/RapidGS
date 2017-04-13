@@ -3,7 +3,7 @@
 1. Copy and paste script below to your Google Spreadsheet under `Tools`,
 `Script Editor`
 
-```
+```js
 var SHEET_ID   = "";       // You can see this from your spreadsheet URL, eg: RgR8MnlYJsDIuY-7qbS7mICOLoteb
 var SHEET_NAME = "Sheet1"; // Change this to your sheet name
 
