@@ -3,62 +3,59 @@
  * Receives the request, generates and returns the output.
  */
 
-// Get sheetKey and sheetName from user
-var sheetKey  = SHEET_ID;
-var sheetName = SHEET_NAME;
-
-// Get request params.
-var callback  = request.parameters.callback;
-var headerRow = request.parameters.header;
-var startRow  = request.parameters.startRow;
-
-// Parse the spreadsheet.
-var spreadsheet = SpreadsheetApp.openById(sheetKey);
-var keys = getHeaderRowKeys_(spreadsheet, sheetName, headerRow);
-var data = readData_(spreadsheet, sheetName, keys, startRow);
-
-// Filter for matching terms.
-data = data.filter(function(entry) {
-  var matches = true;
-  for (var k in keys) {
-    var key = keys[k].replace(/\s+/g, '_');
-    var searchTerm = request.parameters[key];
-    // Use the string form of the value since params are strings by default
-    if (searchTerm != undefined)
-      matches = matches && ("" + entry[key] == searchTerm);
-  }
-  // Matches is true iff all params are undefined or all values for keys match.
-  return matches;
-});
-
-// Write and return the response.
-var response = JSON.stringify({ records: data });
 var output = ContentService.createTextOutput();
-if (callback == undefined) {
-  // Serve as JSON
-  output.setContent(response).setMimeType(ContentService.MimeType.JSON);
-} else {
-  // Serve as JSONP
-  output.setContent(callback + "(" + response + ")")
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+try {
+  // Get request params.
+  var callback  = request.parameters.callback;
+  var headerRow = request.parameters.header   || 1;
+  var startRow  = request.parameters.startRow || 2;
+
+  // Parse the spreadsheet.
+  var spreadsheet = SpreadsheetApp.openById(SHEET_ID);
+  var sheet       = spreadsheet.getSheetByName(SHEET_NAME);
+  var keys        = getHeaderRowKeys_(sheet, headerRow);
+  var data        = readData_(sheet, keys, startRow);
+
+  // Filter for matching terms.
+  data = data.filter(function(entry) {
+    var matches = true;
+    for (var k in keys) {
+      var key = keys[k].replace(/\s+/g, '_');
+      var searchTerm = request.parameters[key];
+      // Use the string form of the value since params are strings by default
+      if (searchTerm != undefined)
+        matches = matches && ("" + entry[key] == searchTerm);
+    }
+    // Matches is true if all params are undefined or all values for keys match.
+    return matches;
+  });
+
+  var response = JSON.stringify({result: "success", data: data});
+
+} catch(error){
+
+  var response = JSON.stringify({result:"error", error: error});
+
+} finally {
+  // Return JSON or JSONP
+  if (callback == undefined) {
+    output.setContent(response).setMimeType(ContentService.MimeType.JSON);
+  } else {
+    output.setContent(callback + "(" + response + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
 }
 
 /**
  * Get a row in a spreadsheet as an Object, using the values in the header row as
  * keys and the corresponding row values as the values.
  *
- * @param spreadsheet Spreadsheet object housing the sheet and header
- * @param sheetName Name of the specific sheet in the spreadsheet with the data
- * @param properties Optional array of keys to use for the row values. Default is the first row.
- * @param startRowNum Optional top row number of the rows to parse. The default is
- * the second row (i.e., below the header).
+ * @param sheet       Sheet object with the data to get
+ * @param properties  Array of keys to use for the row values.
+ * @param startRowNum Top row number of the rows to parse.
  */
-function readData_(spreadsheet, sheetName, properties, startRowNum) {
-  if (typeof properties == "undefined") {
-    properties = getHeaderRowKeys_(spreadsheet, sheetName);
-  }
-
-  var rows = getDataRows_(spreadsheet, sheetName, startRowNum);
+function readData_(sheet, properties, startRowNum) {
+  var rows = getDataRows_(sheet, startRowNum);
   var data = [];
   for (var r = 0, l = rows.length; r < l; r++) {
     var row = rows[r];
@@ -74,28 +71,22 @@ function readData_(spreadsheet, sheetName, properties, startRowNum) {
 /**
  * Parse spreadsheet data as an array of Javascript Objects.
  *
- * @param spreadsheet Spreadsheet object with the data to get
- * @param sheetName Name of the specific sheet in the spreadsheet with the data
- * @param startRowNum Optional top row number of the rows to parse. The default is
- * the second row (i.e., below the header).
+ * @param sheet       Sheet object with the data to get
+ * @param startRowNum Top row number of the rows to parse.
  */
-function getDataRows_(spreadsheet, sheetName, startRowNum) {
-  if (typeof startRowNum == "undefined") startRowNum = 2;
-
-  var sheet = spreadsheet.getSheetByName(sheetName);
-  return sheet.getRange(startRowNum, 1, sheet.getLastRow()-1, sheet.getLastColumn()).getValues();
+function getDataRows_(sheet, startRowNum) {
+  return sheet.getRange(startRowNum, 1, sheet.getLastRow()-1, sheet.getLastColumn())
+              .getValues();
 }
 
 /**
  * Return the array of keys used in the header, replacing whitespace with underscores.
  *
- * @param spreadsheet Spreadsheet object housing the sheet and header
- * @param sheetName Name of the specific sheet in the spreadsheet whose header values to get
- * @param rowNum Optional exact row number of the header. Default is the first row.
+ * @param sheet       Sheet object with the data to get
+ * @param rowNum      Exact row number of the header.
  */
-function getHeaderRowKeys_(spreadsheet, sheetName, rowNum) {
-  if (typeof rowNum == "undefined") rowNum = 1;
-  return getHeaderRow_(spreadsheet, sheetName, rowNum).map(function(value) {
+function getHeaderRowKeys_(sheet, rowNum) {
+  return getHeaderRow_(sheet, rowNum).map(function(value) {
     return value.replace(/\s+/g, '_');
   });
 }
@@ -103,11 +94,9 @@ function getHeaderRowKeys_(spreadsheet, sheetName, rowNum) {
 /**
  * Get the values in the header row of the given sheet in a spreadsheet
  *
- * @param spreadsheet Spreadsheet object housing the sheet and header
- * @param sheetName Name of the specific sheet in the spreadsheet whose header values to get
- * @param rowNum Exact row number of the header.
+ * @param sheet       Sheet object with the data to get
+ * @param rowNum      Exact row number of the header.
  */
-function getHeaderRow_(spreadsheet, sheetName, rowNum) {
-  var sheet = spreadsheet.getSheetByName(sheetName);
+function getHeaderRow_(sheet, rowNum) {
   return sheet.getRange(rowNum, 1, 1, sheet.getLastColumn()).getValues()[0];
 }
